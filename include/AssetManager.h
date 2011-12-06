@@ -34,7 +34,6 @@ class AssetManager {
     MovieGl* getMovieGL( string path );
     vector<Texture *> getTextureListFromDir( string filePath );
     
-    static bool useResources;
     static int numberOfConcurrentThreads;
     
   private:

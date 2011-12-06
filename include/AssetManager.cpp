@@ -8,7 +8,6 @@ using namespace gl;
 using namespace std;
 
 AssetManager* AssetManager::m_pInstance = NULL;
-bool AssetManager::useResources = false;
 int AssetManager::numberOfConcurrentThreads = 2;
 
 AssetManager* AssetManager::getInstance(){
@@ -26,17 +25,17 @@ string AssetManager::getAssetPath(){
     return assetPath;
 }
 
-Texture* AssetManager::getTexture( string path){
-    if(textureAssets[path]){
-        return &textureAssets[path];
+Texture* AssetManager::getTexture( string url){
+    if(textureAssets[url]){
+        return &textureAssets[url];
     }else{
-        textureAssets[path] = Texture(0,0);
+        textureAssets[url] = Texture(1,1);
         if(threads.size() > numberOfConcurrentThreads){
-            urls.push_back(path);
+            urls.push_back(url);
         }else{
-            threads.push_back(boost::shared_ptr<thread>( new thread(&AssetManager::threadLoad, this, path) ) );
+            threads.push_back(boost::shared_ptr<thread>( new thread(&AssetManager::threadLoad, this, url) ) );
         }
-        return &textureAssets[path];
+        return &textureAssets[url];
     }
 }
 
@@ -110,7 +109,6 @@ void AssetManager::threadLoad(const string url){
 	ImageSourceRef image;
     
 	//console() << getElapsedSeconds() << ":" << "Loading:" << url << endl;
-    
     try{
         //try loading from resource folder
         image = loadImage( loadResource( url ) );
@@ -122,7 +120,7 @@ void AssetManager::threadLoad(const string url){
         catch(...) { 
             try {
                 // try to load from URL
-                image = ci::loadImage( ci::loadUrl( Url(url) ) ); 
+                image = loadImage( loadUrl( Url(url) ) ); 
             }
             catch(...) {
                 console() << getElapsedSeconds() << ":" << "Failed to load:" << url << endl;
@@ -134,8 +132,7 @@ void AssetManager::threadLoad(const string url){
 	// allow interruption now (robust version: catch the exception and deal with it)
 	try { 
 		boost::this_thread::interruption_point();
-	}
-	catch(boost::thread_interrupted) {
+	}catch( boost::thread_interrupted ) {
 		// exit the thread
 		return;
 	}
