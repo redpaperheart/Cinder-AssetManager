@@ -39,7 +39,7 @@ class AssetManager {
   private:
     AssetManager(){};                               // Private so that it can  not be called
     AssetManager(AssetManager const&){};            // copy constructor is private
-    AssetManager& operator=(AssetManager const&){}; // assignment operator is private
+    AssetManager& operator=(AssetManager const&){return *m_pInstance;}; // assignment operator is private
     static AssetManager* m_pInstance;
     
     map<string, Texture> textureAssets;
