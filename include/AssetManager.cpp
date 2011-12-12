@@ -8,12 +8,30 @@ using namespace gl;
 using namespace std;
 
 AssetManager* AssetManager::m_pInstance = NULL;
-int AssetManager::numberOfConcurrentThreads = 2;
+//int AssetManager::numberOfConcurrentThreads = 2;
 
 AssetManager* AssetManager::getInstance(){
     if (!m_pInstance)
         m_pInstance = new AssetManager;
     return m_pInstance;
+}
+
+AssetManager::~AssetManager(void){
+    // stop loader thread and wait for it to finish
+    mThread->interrupt();
+    mThread->join();
+
+    // clear buffers
+    textureAssets.clear();
+    urls.clear();
+    loadedSurfaces.clear();
+}
+
+void AssetManager::setup(){
+    if(!isSetup){
+        mThread = boost::shared_ptr<boost::thread>(new boost::thread(&AssetManager::threadLoad, this));
+        isSetup = true;
+    }
 }
 
 string AssetManager::getAssetPath(){
@@ -26,20 +44,24 @@ string AssetManager::getAssetPath(){
 }
 
 Texture* AssetManager::getTexture( string url){
+    setup();
     if(textureAssets[url]){
         return &textureAssets[url];
     }else{
         textureAssets[url] = Texture(1,1);
-        if(threads.size() > numberOfConcurrentThreads){
-            urls.push_back(url);
-        }else{
-            threads.push_back(boost::shared_ptr<thread>( new thread(&AssetManager::threadLoad, this, url) ) );
-        }
+//        if(threads.size() > numberOfConcurrentThreads){
+        urlsMutex.lock();
+        urls.push_back(url);
+        urlsMutex.unlock();
+//        }else{
+//            threads.push_back(boost::shared_ptr<thread>( new thread(&AssetManager::threadLoad, this, url) ) );
+//        }
         return &textureAssets[url];
     }
 }
 
 MovieGl* AssetManager::getMovieGL( string url){
+    setup();
     MovieGl *m;
     try{
         //try load from resource folder
@@ -56,6 +78,7 @@ MovieGl* AssetManager::getMovieGL( string url){
 }
 
 vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
+    setup();
     vector<Texture *> textures;
     textures.clear();
     fs::path p( filePath );
@@ -75,92 +98,151 @@ vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
 
 
 void AssetManager::update(){
-	// currently update needs to be called from outside.
-    // in the future this should run on it's own internal timer.
     
-    if(!threads.empty()){
-        // clean all finished threads:
-        deque<boost::shared_ptr<boost::thread> >::iterator itr;
-        for(itr = threads.begin(); itr != threads.end();){
-            if( (*itr)->timed_join<posix_time::milliseconds>(posix_time::milliseconds(1)) )
-                itr = threads.erase(itr);
-            else
-                ++itr;
-        }
-    }
-    // start loading all outstanding images:
-    while (!urls.empty() && threads.size() < numberOfConcurrentThreads ){
-        threads.push_back(boost::shared_ptr<thread>( new thread(&AssetManager::threadLoad, this, urls.back()) ) );
-        urls.pop_back();
-    }
-    if(!loadedSurfaces.empty()){
+    loadedSurfacesMutex.lock();
+    int count = 0;
+    while (!loadedSurfaces.empty() && count < 3){
         // create texture from finished surfaces
-        loadedSurfacesMutex.lock();
-        for ( map<string, Surface>::iterator mitr=loadedSurfaces.begin(); mitr != loadedSurfaces.end(); mitr++ ){
-            textureAssets[(*mitr).first] = Texture( (*mitr).second );
-        }
-        loadedSurfaces.clear();
-        loadedSurfacesMutex.unlock();
+//        for ( map<string, Surface>::iterator mitr=loadedSurfaces.begin(); mitr != loadedSurfaces.end(); mitr++ ){
+//            textureAssets[(*mitr).first] = Texture( (*mitr).second );
+//            loadedSurfaces.erase( (*mitr).first );
+//            console()<< "created: " << (*mitr).first << endl;
+//        }
+        map<string, Surface>::iterator mitr=loadedSurfaces.begin();
+        textureAssets[(*mitr).first] = Texture( (*mitr).second );
+        //console()<< "created: " << (*mitr).first << endl;
+        loadedSurfaces.erase( (*mitr).first );
+        //loadedSurfaces.clear();
+        count++;
     }
+    loadedSurfacesMutex.unlock();
+    
+}
+void AssetManager::threadLoad(){
+	bool			empty;
+	bool			succeeded;
+	Surface			surface;
+	ImageSourceRef	image;
+	string			url;
+    
+	// run until interrupted
+	while(true) {
+		// fetch first url from the queue, if any	
+		urlsMutex.lock();
+		empty = urls.empty();
+		if(!empty) url = urls.front();
+		urlsMutex.unlock();
+        
+		if(!empty) {
+			// try to load image
+			succeeded = false;
+            
+			// try to load from FILE
+			if(!succeeded) try { 
+				image = ci::loadImage( ci::loadFile( getAssetPath()+url ) ); 
+				succeeded = true;
+			} catch(...) {}
+            
+			// try to load from URL
+			if(!succeeded) try { 
+				image = ci::loadImage( ci::loadUrl( Url(url) ) ); 
+				succeeded = true;
+			} catch(...) {}
+            
+			if(!succeeded) {
+				// both attempts to load the url failed
+                
+				// remove url from queue
+				urlsMutex.lock();
+				urls.pop_front();
+				urlsMutex.unlock();
+                
+				continue;
+			}
+            
+			// succeeded, check if thread was interrupted
+			try { boost::this_thread::interruption_point(); }
+			catch(boost::thread_interrupted) { break; }
+            
+			// create Surface from the image
+			surface = Surface(image);
+            
+			// check if thread was interrupted
+			try { boost::this_thread::interruption_point(); }
+			catch(boost::thread_interrupted) { break; }
+            
+			// resize image if larger than 4096 px
+//			Area source = surface.getBounds();
+//			Area dest(0, 0, 4096, 4096);
+//			Area fit = Area::proportionalFit(source, dest, false, false);
+//            
+//			if(source.getSize() != fit.getSize()) 
+//				surface = ci::ip::resizeCopy(surface, source, fit.getSize());
+            
+			// check if thread was interrupted
+			try { boost::this_thread::interruption_point(); }
+			catch(boost::thread_interrupted) { break; }
+            
+			// copy to main thread
+            loadedSurfacesMutex.lock();
+            loadedSurfaces[url] = surface;
+            loadedSurfacesMutex.unlock();
+
+			// remove url from queue
+			urlsMutex.lock();
+            urls.pop_front();
+            urlsMutex.unlock();
+		}
+		// sleep a while
+		boost::this_thread::sleep( boost::posix_time::milliseconds(10) );
+	}
 }
 
-void AssetManager::threadLoad(const string url){
-	Surface surface;
-	ImageSourceRef image;
-    
-	//console() << getElapsedSeconds() << ":" << "Loading:" << url << endl;
-    try{
-        //try loading from resource folder
-        image = loadImage( loadResource( url ) );
-    }catch(...){
-        try { 
-            // try to load relative to app
-            image = loadImage( loadFile( getAssetPath()+url ) ); 
-        }
-        catch(...) { 
-            try {
-                // try to load from URL
-                image = loadImage( loadUrl( Url(url) ) ); 
-            }
-            catch(...) {
-                console() << getElapsedSeconds() << ":" << "Failed to load:" << url << endl;
-                return;
-            }
-        }
-    }
-    
-	// allow interruption now (robust version: catch the exception and deal with it)
-	try { 
-		boost::this_thread::interruption_point();
-	}catch( boost::thread_interrupted ) {
-		// exit the thread
-		return;
-	}
-	// create surface
-	surface = Surface(image);
-    
-	boost::this_thread::interruption_point();
-    
-	// resize
-//	Area source = surface.getBounds();
-//	Area dest(0, 0, mMaxSize, mMaxSize);
-//	Area fit = Area::proportionalFit(source, dest, false, false);
+//void AssetManager::threadLoad(const string url){
+//	Surface surface;
+//	ImageSourceRef image;
 //    
-//	if(source.getSize() != fit.getSize())
-//	{
-//		console() << getElapsedSeconds() << ":" << "Resizing surface..." << endl;
-//		surface = ip::resizeCopy(surface, source, fit.getSize());
-//		console() << getElapsedSeconds() << ":" << "Surface resized" << endl;
+//	//console() << getElapsedSeconds() << ":" << "Loading:" << url << endl;
+//    try{
+//        //try loading from resource folder
+//        image = loadImage( loadResource( url ) );
+//    }catch(...){
+//        try { 
+//            // try to load relative to app
+//            image = loadImage( loadFile( getAssetPath()+url ) ); 
+//        }
+//        catch(...) { 
+//            try {
+//                // try to load from URL
+//                image = loadImage( loadUrl( Url(url) ) ); 
+//            }
+//            catch(...) {
+//                console() << getElapsedSeconds() << ":" << "Failed to load:" << url << endl;
+//                return;
+//            }
+//        }
+//    }
+//    
+//	// allow interruption now (robust version: catch the exception and deal with it)
+//	try { 
+//		boost::this_thread::interruption_point();
+//	}catch( boost::thread_interrupted ) {
+//		// exit the thread
+//		return;
 //	}
-    
-	// allow interruption now
-	boost::this_thread::interruption_point();
-    
-	// copy to main thread
-	loadedSurfacesMutex.lock();
-	loadedSurfaces[url] = surface;
-	loadedSurfacesMutex.unlock();
-    
-	//console() << getElapsedSeconds() << ":" << "Thread finished" << endl;
-}
+//	// create surface
+//	surface = Surface(image);
+//    
+//	boost::this_thread::interruption_point();
+//    
+//	// allow interruption now
+//	boost::this_thread::interruption_point();
+//    
+//	// copy to main thread
+//	loadedSurfacesMutex.lock();
+//	loadedSurfaces[url] = surface;
+//	loadedSurfacesMutex.unlock();
+//    
+//	//console() << getElapsedSeconds() << ":" << "Thread finished" << endl;
+//}
 

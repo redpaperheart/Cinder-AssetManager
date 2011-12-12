@@ -34,10 +34,13 @@ class AssetManager {
     MovieGl* getMovieGL( string path );
     vector<Texture *> getTextureListFromDir( string filePath );
     
-    static int numberOfConcurrentThreads;
+    //static int numberOfConcurrentThreads;
+    
+    boost::shared_ptr<boost::thread>	mThread;
     
   private:
     AssetManager(){};                               // Private so that it can  not be called
+    ~AssetManager();
     AssetManager(AssetManager const&){};            // copy constructor is private
     AssetManager& operator=(AssetManager const&){return *m_pInstance;}; // assignment operator is private
     static AssetManager* m_pInstance;
@@ -47,8 +50,15 @@ class AssetManager {
     
 	boost::mutex loadedSurfacesMutex;
     map<string, Surface> loadedSurfaces;
+    
 	deque<boost::shared_ptr<boost::thread> > threads;
+    
+    boost::mutex urlsMutex;
     deque<string> urls;
-	void threadLoad(const std::string url);
+    
+    bool isSetup = false;
+    
+    void threadLoad();
+	//void threadLoad(const std::string url);
     
 };
