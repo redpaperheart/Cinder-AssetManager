@@ -48,6 +48,7 @@ Texture* AssetManager::getTexture( string url, bool loadInThread ){
     if(textureAssets[url]){
         return &textureAssets[url];
     }else{
+        textureAssets[url] = Texture(1,1);
         if(loadInThread){
             textureAssets[url] = Texture(1,1);
             urlsMutex.lock();
