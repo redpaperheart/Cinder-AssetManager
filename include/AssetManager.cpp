@@ -43,19 +43,36 @@ string AssetManager::getAssetPath(){
     return assetPath;
 }
 
-Texture* AssetManager::getTexture( string url){
+Texture* AssetManager::getTexture( string url, bool loadInThread ){
     setup();
     if(textureAssets[url]){
         return &textureAssets[url];
     }else{
-        textureAssets[url] = Texture(1,1);
-//        if(threads.size() > numberOfConcurrentThreads){
-        urlsMutex.lock();
-        urls.push_back(url);
-        urlsMutex.unlock();
-//        }else{
-//            threads.push_back(boost::shared_ptr<thread>( new thread(&AssetManager::threadLoad, this, url) ) );
-//        }
+        if(loadInThread){
+            textureAssets[url] = Texture(1,1);
+            urlsMutex.lock();
+            urls.push_back(url);
+            urlsMutex.unlock();
+        }else{
+            try{
+                //try loading from resource folder
+                textureAssets[url] = Texture( loadImage( loadResource( url ) ) );
+            }catch(...){
+                try { 
+                    // try to load relative to app
+                    textureAssets[url] = Texture( loadImage( loadFile( getAssetPath()+url ) ) ); 
+                }
+                catch(...) { 
+                    try {
+                        // try to load from URL
+                        textureAssets[url] = Texture( loadImage( loadUrl( Url(url) ) ) ); 
+                    }
+                    catch(...) {
+                        console() << getElapsedSeconds() << ":" << "Failed to load:" << url << endl;
+                    }
+                }
+            }
+        }
         return &textureAssets[url];
     }
 }

@@ -30,7 +30,7 @@ class AssetManager {
     void setup();
     void update();
     string getAssetPath();
-    Texture* getTexture( string path );
+    Texture* getTexture( string path, bool loadInThread = true );
     MovieGl* getMovieGL( string path );
     vector<Texture *> getTextureListFromDir( string filePath );
     
