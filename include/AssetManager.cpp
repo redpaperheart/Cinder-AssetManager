@@ -96,21 +96,30 @@ MovieGl* AssetManager::getMovieGL( string url){
 }
 
 vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
+    
     setup();
+    
     vector<Texture *> textures;
     textures.clear();
-    fs::path p( filePath );
+    
+
+    fs::path p( getAssetPath() + filePath );
+
+
     for ( fs::directory_iterator it( p ); it != fs::directory_iterator(); ++it ){
+        
         if ( fs::is_regular_file( *it ) ){
             // -- Perhaps there is a better way to ignore hidden files
             string fileName =  it->path().filename().string();
             if( !( fileName.compare( ".DS_Store" ) == 0 ) ){
+                
                 textures.push_back( getTexture( filePath + fileName ) );
                 //textureAssets[filePath + fileName] = Texture(1,1);
                 //textures.push_back( &textureAssets[filePath + fileName] );
             }
         }
     }
+    
     return textures;
 }
 
