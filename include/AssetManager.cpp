@@ -100,6 +100,7 @@ vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
     vector<Texture *> textures;
     textures.clear();
     fs::path p( filePath );
+    try{
     for ( fs::directory_iterator it( p ); it != fs::directory_iterator(); ++it ){
         if ( fs::is_regular_file( *it ) ){
             // -- Perhaps there is a better way to ignore hidden files
@@ -110,6 +111,9 @@ vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
                 //textures.push_back( &textureAssets[filePath + fileName] );
             }
         }
+    }
+    }catch(...){
+        console() << "ERROR opening AssetManager::getTextureListFromDir( "<< filePath <<")"<<endl;
     }
     return textures;
 }
