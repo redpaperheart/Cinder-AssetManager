@@ -1,9 +1,11 @@
-//
-//  AssetManager.h
-//
-//  Created by Daniel Scheibel on 12/5/11.
-//  Copyright (c) 2011 Red Paper Heart. All rights reserved.
-//
+/*
+ *  AssetManager.h
+ *
+ *  Created by Daniel Scheibel on 12/5/11.
+ *  Copyright (c) 2011 Red Paper Heart. All rights reserved.
+ *  http://www.redpaperheart.com
+ *
+ */
 #pragma once
 
 #include "cinder/app/AppBasic.h"
@@ -30,35 +32,30 @@ class AssetManager {
     void setup();
     void update();
     string getAssetPath();
+    
     Texture* getTexture( string path, bool loadInThread = true );
     MovieGl* getMovieGL( string path );
     vector<Texture *> getTextureListFromDir( string filePath );
     
-    //static int numberOfConcurrentThreads;
-    
-    boost::shared_ptr<boost::thread>	mThread;
-    
   private:
-    AssetManager(){};                               // Private so that it can  not be called
+    AssetManager(){}; // Private so that it can  not be called
     ~AssetManager();
-    AssetManager(AssetManager const&){};            // copy constructor is private
+    AssetManager(AssetManager const&){}; // copy constructor is private
     AssetManager& operator=(AssetManager const&){return *m_pInstance;}; // assignment operator is private
     static AssetManager* m_pInstance;
     
-    map<string, Texture> textureAssets;
-    string assetPath;
+    boost::shared_ptr<boost::thread>	mThread;
     
-	boost::mutex loadedSurfacesMutex;
-    map<string, Surface> loadedSurfaces;
+    map<string, Texture> mTextureAssets;
+    string mAssetPath;
     
-	deque<boost::shared_ptr<boost::thread> > threads;
+	boost::mutex mLoadedSurfacesMutex;
+    map<string, Surface> mLoadedSurfaces;
     
-    boost::mutex urlsMutex;
-    deque<string> urls;
+    boost::mutex mUrlsMutex;
+    deque<string> mUrls;
     
-    bool isSetup = false;
+    bool mIsSetup = false;
     
     void threadLoad();
-	//void threadLoad(const std::string url);
-    
 };
