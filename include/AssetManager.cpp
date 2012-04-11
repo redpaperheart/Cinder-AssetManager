@@ -1,9 +1,12 @@
 /*
- *  AssetManager.cpp
+ *  AssetManager.h
  *
  *  Created by Daniel Scheibel on 12/5/11.
- *  Copyright (c) 2011 Red Paper Heart. All rights reserved.
+ *  Copyright (c) 2012 Red Paper Heart. All rights reserved.
  *  http://www.redpaperheart.com
+ *
+ *  Note: When using xCode, drag&drop the "include" folder into the xCode project. 
+ *        Otherwise you mihgt get an error like "symbol(s) not found for architecture i386"
  *
  */
 #include "AssetManager.h"
@@ -44,11 +47,12 @@ void AssetManager::setup(){
 string AssetManager::getAssetPath(){
     // returns folder of the App for relative paths
     if(mAssetPath.empty()){
-        mAssetPath = getAppPath();
+        mAssetPath = getAppPath().string();
         mAssetPath = mAssetPath.substr( 0, mAssetPath.find_last_of("/")+1 );
     }
     return mAssetPath;
 }
+
 
 Texture* AssetManager::getTexture( string url, bool loadInThread ){
     setup();
@@ -121,7 +125,6 @@ vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
     }
     return textures;
 }
-
 
 void AssetManager::update(){
     mLoadedSurfacesMutex.lock();

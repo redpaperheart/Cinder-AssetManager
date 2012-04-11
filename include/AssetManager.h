@@ -2,8 +2,11 @@
  *  AssetManager.h
  *
  *  Created by Daniel Scheibel on 12/5/11.
- *  Copyright (c) 2011 Red Paper Heart. All rights reserved.
+ *  Copyright (c) 2012 Red Paper Heart. All rights reserved.
  *  http://www.redpaperheart.com
+ *
+ *  Note: When using xCode, drag&drop the "include" folder into the xCode project. 
+ *        Otherwise you mihgt get an error like "symbol(s) not found for architecture i386"
  *
  */
 #pragma once
@@ -31,20 +34,21 @@ class AssetManager {
 
     void setup();
     void update();
-    string getAssetPath();
     
+    string getAssetPath();
     Texture* getTexture( string path, bool loadInThread = true );
+    //Texture* getTexture( int mswID, bool loadInThread = true );
     MovieGl* getMovieGL( string path );
     vector<Texture *> getTextureListFromDir( string filePath );
     
   private:
-    AssetManager(){}; // Private so that it can  not be called
+    AssetManager(){mIsSetup=false;}; // Private so that it can  not be called
     ~AssetManager();
     AssetManager(AssetManager const&){}; // copy constructor is private
     AssetManager& operator=(AssetManager const&){return *m_pInstance;}; // assignment operator is private
     static AssetManager* m_pInstance;
     
-    boost::shared_ptr<boost::thread>	mThread;
+    boost::shared_ptr<boost::thread> mThread;
     
     map<string, Texture> mTextureAssets;
     string mAssetPath;
@@ -55,7 +59,7 @@ class AssetManager {
     boost::mutex mUrlsMutex;
     deque<string> mUrls;
     
-    bool mIsSetup = false;
+    bool mIsSetup;
     
     void threadLoad();
 };
