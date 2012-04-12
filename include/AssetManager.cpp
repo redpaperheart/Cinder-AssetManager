@@ -132,7 +132,7 @@ void AssetManager::update(){
     while (!mLoadedSurfaces.empty() && count < 3){
         map<string, Surface>::iterator mitr=mLoadedSurfaces.begin();
         mTextureAssets[(*mitr).first] = Texture( (*mitr).second );
-        //console()<< "created: " << (*mitr).first << endl;
+        console()<< "created: " << (*mitr).first << endl;
         mLoadedSurfaces.erase( (*mitr).first );
         count++;
     }
@@ -183,20 +183,12 @@ void AssetManager::threadLoad(){
 				mUrlsMutex.lock();
 				mUrls.pop_front();
 				mUrlsMutex.unlock();
-                
+                console() << "AssetManager Loading Error: Image not found." <<endl;
 				continue;
 			}
             
-			// succeeded, check if thread was interrupted
-			try { boost::this_thread::interruption_point(); }
-			catch(boost::thread_interrupted) { break; }
-            
 			// create Surface from the image
 			surface = Surface(image);
-            
-			// check if thread was interrupted
-			try { boost::this_thread::interruption_point(); }
-			catch(boost::thread_interrupted) { break; }
             
 			// resize image if larger than 4096 px
 //			Area source = surface.getBounds();
@@ -221,6 +213,7 @@ void AssetManager::threadLoad(){
             mUrlsMutex.unlock();
 		}
 		// sleep a while
-		boost::this_thread::sleep( boost::posix_time::milliseconds(10) );
+		//boost::this_thread::sleep( boost::posix_time::milliseconds(10) );
+        boost::thread::yield();
 	}
 }
