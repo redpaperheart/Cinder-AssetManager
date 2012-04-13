@@ -36,6 +36,7 @@ class AssetManager {
     void update();
     
     string getAssetPath();
+    string getResourcePath();
     Texture* getTexture( string path, bool loadInThread = true );
     //Texture* getTexture( int mswID, bool loadInThread = true );
     MovieGl* getMovieGL( string path );
@@ -52,6 +53,7 @@ class AssetManager {
     
     map<string, Texture> mTextureAssets;
     string mAssetPath;
+    string mResourcePath;
     
 	boost::mutex mLoadedSurfacesMutex;
     map<string, Surface> mLoadedSurfaces;

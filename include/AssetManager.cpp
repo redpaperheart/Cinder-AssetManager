@@ -53,6 +53,16 @@ string AssetManager::getAssetPath(){
     return mAssetPath;
 }
 
+string AssetManager::getResourcePath(){
+    // returns folder of the App for relative paths
+    if(mResourcePath.empty()){
+        mResourcePath = getAppPath().string();
+        mResourcePath += "/Contents/Resources/";
+        console()<< " mResourcePath: " << mResourcePath << endl; 
+    }
+    return mResourcePath;
+}
+
 
 Texture* AssetManager::getTexture( string url, bool loadInThread ){
     setup();
@@ -112,6 +122,13 @@ vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
     vector<Texture *> textures;
     textures.clear();
     fs::path p( getAssetPath() + filePath );
+    //console()<< "assetPath " << a << ", exists? :: " << fs::is_directory(a)<<":"<< fs::exists(a) << endl;
+    if( !fs::is_directory(p) && !fs::exists(p)){
+        p = fs::path(getResourcePath() + filePath );
+    }
+    if( !fs::is_directory(p) && !fs::exists(p)){
+        console() << "AssetManager::getTextureListFromDir ERROR: folder \"" << filePath << " does neither exist as relative path nor as Resource path!" <<endl; 
+    }
     for ( fs::directory_iterator it( p ); it != fs::directory_iterator(); ++it ){
         if ( fs::is_regular_file( *it ) ){
             // -- Perhaps there is a better way to ignore hidden files
