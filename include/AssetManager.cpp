@@ -124,7 +124,7 @@ vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
     fs::path p( getAssetPath() + filePath );
     //console()<< "assetPath " << a << ", exists? :: " << fs::is_directory(a)<<":"<< fs::exists(a) << endl;
     if( !fs::is_directory(p) && !fs::exists(p)){
-        p = fs::path(getResourcePath() + filePath );
+        p = fs::path(ci::app::App::getResourcePath().string() + "/" + filePath );
     }
     if( !fs::is_directory(p) && !fs::exists(p)){
         console() << "AssetManager::getTextureListFromDir ERROR: folder \"" << filePath << " does neither exist as relative path nor as Resource path!" <<endl; 
@@ -206,14 +206,6 @@ void AssetManager::threadLoad(){
             
 			// create Surface from the image
 			surface = Surface(image);
-            
-			// resize image if larger than 4096 px
-//			Area source = surface.getBounds();
-//			Area dest(0, 0, 4096, 4096);
-//			Area fit = Area::proportionalFit(source, dest, false, false);
-//            
-//			if(source.getSize() != fit.getSize()) 
-//				surface = ci::ip::resizeCopy(surface, source, fit.getSize());
             
 			// check if thread was interrupted
 			try { boost::this_thread::interruption_point(); }
