@@ -38,10 +38,10 @@ class AssetManager {
     string getAssetPath();
     string getResourcePath();
     Texture* getTexture( string path, bool loadInThread = true );
-    //Texture* getTexture( int mswID, bool loadInThread = true );
     MovieGl* getMovieGL( string path );
-    vector<Texture *> getTextureListFromDir( string filePath );
-    
+    vector<Texture *> getTextureListFromDir( string filePath, bool loadInThread = true );
+
+    static bool useThreadloading;
   private:
     AssetManager(){mIsSetup=false;}; // Private so that it can  not be called
     ~AssetManager();

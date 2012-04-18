@@ -19,6 +19,7 @@ using namespace gl;
 using namespace std;
 
 AssetManager* AssetManager::m_pInstance = NULL;
+bool AssetManager::useThreadloading = true;
 
 AssetManager* AssetManager::getInstance(){
     if (!m_pInstance)
@@ -39,7 +40,9 @@ AssetManager::~AssetManager(void){
 
 void AssetManager::setup(){
     if(!mIsSetup){
-        mThread = boost::shared_ptr<boost::thread>(new boost::thread(&AssetManager::threadLoad, this));
+        if(useThreadloading){
+            mThread = boost::shared_ptr<boost::thread>(new boost::thread(&AssetManager::threadLoad, this));
+        }
         mIsSetup = true;
     }
 }
@@ -58,7 +61,7 @@ string AssetManager::getResourcePath(){
     if(mResourcePath.empty()){
         mResourcePath = getAppPath().string();
         mResourcePath += "/Contents/Resources/";
-        console()<< " mResourcePath: " << mResourcePath << endl; 
+        //console()<< " mResourcePath: " << mResourcePath << endl; 
     }
     return mResourcePath;
 }
@@ -70,7 +73,7 @@ Texture* AssetManager::getTexture( string url, bool loadInThread ){
         return &mTextureAssets[url];
     }else{
         mTextureAssets[url] = Texture(1,1);
-        if(loadInThread){
+        if(loadInThread && useThreadloading){
             mTextureAssets[url] = Texture(1,1);
             mUrlsMutex.lock();
             mUrls.push_back(url);
@@ -116,7 +119,7 @@ MovieGl* AssetManager::getMovieGL( string url){
     return m;
 }
 
-vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
+vector<Texture *> AssetManager::getTextureListFromDir( string filePath, bool loadInThread){
     //currently only loads from 
     setup();
     vector<Texture *> textures;
@@ -134,7 +137,7 @@ vector<Texture *> AssetManager::getTextureListFromDir( string filePath ){
             // -- Perhaps there is a better way to ignore hidden files
             string fileName =  it->path().filename().string();
             if( !( fileName.compare( ".DS_Store" ) == 0 ) ){
-                textures.push_back( getTexture( filePath + fileName ) );
+                textures.push_back( getTexture( filePath + fileName, loadInThread ) );
                 //textureAssets[filePath + fileName] = Texture(1,1);
                 //textures.push_back( &textureAssets[filePath + fileName] );
             }
@@ -222,7 +225,7 @@ void AssetManager::threadLoad(){
             mUrlsMutex.unlock();
 		}
 		// sleep a while
-		//boost::this_thread::sleep( boost::posix_time::milliseconds(10) );
-        boost::thread::yield();
+		boost::this_thread::sleep( boost::posix_time::milliseconds(10) );
+        //boost::thread::yield();
 	}
 }
